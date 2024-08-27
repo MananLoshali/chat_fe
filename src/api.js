@@ -1,7 +1,7 @@
 import axios from "axios";
 import { store } from "./redux/store";
 
-const BACKEND_URL = "http://localhost:4000/api";
+const BACKEND_URL = "https://chat-be-8ujr.onrender.com/api";
 
 export const publicRequest = axios.create({
   baseURL: BACKEND_URL,
