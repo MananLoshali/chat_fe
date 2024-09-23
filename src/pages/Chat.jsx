@@ -4,7 +4,12 @@ import { getPrivateRequest } from "../api";
 import { MyContext } from "../contexts/myContexts";
 import socket from "../socket";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShare } from "@fortawesome/free-solid-svg-icons";
+import {
+  faShare,
+  faSpinner,
+  faCheck,
+  faCheckDouble,
+} from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 
@@ -20,6 +25,7 @@ const Chat = () => {
   const { sender } = useContext(MyContext);
   const [messages, setMessages] = useState([]);
   const messageEndRef = useRef(null);
+  const [showStatus, setShowStatus] = useState(false);
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -53,12 +59,18 @@ const Chat = () => {
     socket.emit("join", id);
 
     // Attach the event listener for receiving messages
-    const handleReceiveMessage = (messageData) => {
-      const audio = new Audio(
-        "http://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/alien_shoot.wav"
-      );
-      audio.play();
+    const handleReceiveMessage = (messageData, callback) => {
+      // const audio = new Audio(
+      //   "http://codeskulptor-demos.commondatastorage.googleapis.com/GalaxyInvaders/alien_shoot.wav"
+      // );
+      // audio.play();
+      console.log(messageData, callback);
+
+      setShowStatus(messageData.sender === id ? true : false);
       setMessages((prev) => [...prev, messageData]);
+      // callback({
+      //   msgStatus: "ok",
+      // });
     };
 
     socket.on("receiveMessage", handleReceiveMessage);
@@ -71,11 +83,18 @@ const Chat = () => {
 
   const handleClick = async () => {
     try {
+      if (msg === "") {
+        toast.warn("Enter some message");
+        return;
+      }
       const privateRequest = getPrivateRequest();
+      const messageYourself = id === receiverId ? true : false;
+
       const res = await privateRequest.post(`/chats/${id}`, {
         sender: id,
         receiver: receiverId,
         message: msg,
+        messageYourself,
       });
       setMsg("");
     } catch (error) {
@@ -83,6 +102,7 @@ const Chat = () => {
       toast.error(msg);
     }
   };
+
   return (
     <div
       className="relative w-full h-[90vh] box-border bg-gray-50"
@@ -98,7 +118,7 @@ const Chat = () => {
         {messages?.map((item, index) => (
           <div
             key={index}
-            className={`flex flex-col gap-2 p-3 mb-4 w-max max-w-[75%] min-w-32  ${
+            className={`flex flex-col gap-1 p-3 mb-4 w-max max-w-[75%] min-w-32 relative ${
               item.sender === id
                 ? "self-end bg-blue-500 text-white rounded-t-lg rounded-br-lg rounded-bl-none shadow-md"
                 : "self-start bg-gray-300 text-black rounded-t-lg rounded-bl-lg rounded-br-none shadow-md"
@@ -107,7 +127,36 @@ const Chat = () => {
             <p className="text-xs text-red-900">
               {item.sender === id ? "You" : "Other"}
             </p>
-            <p className="text-base break-words">{item.message}</p>
+            <p className="text-base break-words mb-2">{item.message}</p>
+            {/* <p className=" text-red-400 font-bold absolute right-2 bottom-1">
+              <FontAwesomeIcon icon={faSpinner} size="lg" />
+            </p> */}
+            <>
+              {item.status === "PENDING" && (
+                <p className="font-bold absolute right-2 bottom-1">
+                  <FontAwesomeIcon icon={faSpinner} size="sm" />
+                </p>
+              )}
+              {item.status === "SENT" && (
+                <p className="font-bold absolute right-2 bottom-1">
+                  <FontAwesomeIcon icon={faCheck} size="sm" />
+                </p>
+              )}
+              {item.status === "RECEIVED" && (
+                <p className="font-bold absolute right-2 bottom-1">
+                  <FontAwesomeIcon icon={faCheckDouble} size="sm" />
+                </p>
+              )}
+              {item.status === "READ" && (
+                <p className="font-bold absolute right-2 bottom-1">
+                  <FontAwesomeIcon
+                    icon={faCheckDouble}
+                    size="sm"
+                    color="blue"
+                  />
+                </p>
+              )}
+            </>
           </div>
         ))}
       </div>
@@ -117,12 +166,19 @@ const Chat = () => {
             value={msg}
             type="text"
             placeholder="Type a message..."
-            onChange={(e) => setMsg(e.target.value)}
+            onChange={(e) => {
+              let message = e.target.value.trim();
+              setMsg(message);
+            }}
             className="w-full h-full p-2 border-none bg-transparent focus:outline-none focus:ring-0 text-gray-700"
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleClick();
+            }}
           />
           <button
+            disabled={!msg ? true : false}
             onClick={handleClick}
-            className="absolute right-3 w-20 h-8 text-white font-medium bg-purple-500 hover:bg-purple-600 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+            className={`absolute right-3 w-20 h-8 text-white font-medium bg-purple-500 hover:bg-purple-600 rounded-lg transition duration-200 flex items-center justify-center gap-2 disabled:bg-slate-500 disabled:cursor-not-allowed`}
           >
             Send
             <FontAwesomeIcon icon={faShare} size="lg" />

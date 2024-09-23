@@ -10,13 +10,17 @@ import { useDispatch, useSelector } from "react-redux";
 import { setSelectedChat } from "../redux/userReducer";
 
 const Main = () => {
-  const currentUser = useSelector((state) => state.user?.user);
-  const id = currentUser?.id;
+  const currentUser = useSelector((state) => state.user);
+  const id = currentUser?.user?.id;
+  const selectedChat = currentUser?.selectedChat;
+
   const { id: receiverId } = useParams();
   const { setSender } = useContext(MyContext);
   const [contacts, setContacts] = useState([]);
+  const [filteredContacts, setFilteredContacts] = useState([]);
   const [allUsers, showAllUsers] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [contact, setContact] = useState("");
   const { sender } = useContext(MyContext);
   const dispatch = useDispatch();
 
@@ -35,6 +39,7 @@ const Main = () => {
         const res = await privateRequest.get(`/users/contact/${id}`);
         if (res.data.success) {
           setContacts(res.data?.contactUsers?.contacts);
+          setFilteredContacts(res.data?.contactUsers?.contacts);
         }
       } catch (error) {
         console.log(error, "error");
@@ -43,12 +48,6 @@ const Main = () => {
     getContacts();
   }, [allUsers]);
 
-  // useEffect(() => {
-  //   if (!id) {
-  //     navigate("/login");
-  //   }
-  // }, []);
-
   const handleClick = (name) => {
     dispatch(setSelectedChat(name));
     setSender(name);
@@ -56,6 +55,18 @@ const Main = () => {
       setSidebarOpen(false); // Close the sidebar on small screens after selecting a contact
     }
   };
+
+  const handleChange = (e) => {
+    setContact(e.target.value);
+  };
+
+  useEffect(() => {
+    const filteredContact = contacts.filter((item) =>
+      item.name.includes(contact)
+    );
+    setFilteredContacts(filteredContact);
+  }, [contact]);
+
   return (
     <div className="relative">
       <Navbar />
@@ -68,26 +79,27 @@ const Main = () => {
       <div className="flex">
         <div
           id="sidebar"
-          className={`p-4 border-r border-r-amber-200 h-screen lg:h-[90vh] w-[50%] lg:w-[25%] lg:static fixed inset-y-0 left-0 transform ${
+          className={`p-4 border-r border-r-amber-200 h-[100vh] lg:h-[90vh] w-[50%] lg:w-[25%] lg:static fixed inset-y-0 left-0 transform  ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           } lg:translate-x-0 transition-transform duration-300 bg-white shadow-lg z-40`}
         >
           <h1 className="text-xl text-fuchsia-500 font-sans mb-5">Contacts</h1>
           <input
-            className="p-2 rounded-lg bg-transparent border border-green-500 text-black text-md mb-5 w-[90%]"
+            className="p-2 rounded-lg bg-transparent border border-green-500 text-black text-md mb-5 w-[90%] focus::border-none focus:outline-0"
             type="search"
             placeholder="Search Contacts"
+            onChange={(e) => handleChange(e)}
           />
-          {!contacts?.length && <p>No Contacts found</p>}
+          {!filteredContacts?.length && <p>No Contacts found</p>}
           {contacts && (
             <div className="flex flex-col gap-4">
-              {contacts?.map((contact) => (
+              {filteredContacts?.map((contact) => (
                 <Link
                   key={contact.email}
                   to={`/chats/${contact._id}`}
                   onClick={() => handleClick(contact.name)}
                   className={`block box-border rounded-lg bg-slate-200 shadow-lg py-2 px-4 cursor-pointer ${
-                    sender === contact.name
+                    selectedChat === contact.name
                       ? "shadow-gray-900"
                       : "shadow-gray-300 "
                   }`}
